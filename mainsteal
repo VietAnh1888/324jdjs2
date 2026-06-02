@@ -2,6 +2,9 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer       = Players.LocalPlayer
 
+-- Khai báo upvalue cho các thư viện và module game để đồng bộ hóa hoạt động và hiển thị UI
+local Library, Client, Directory, Types, Modules, Network, RngEggsTypes, RngEggsDir, RngBalancing, RngEggCmds, PetItem, LuckyDiceCmds, _SaveModule
+
 repeat task.wait(0.5) until game:IsLoaded() and LocalPlayer.Character
 
 local ZONE_CONFIG = {
@@ -47,7 +50,7 @@ local CONFIG = {
     FARM_RADIUS        = 120,
     DISABLE_3D_RENDER  = false, 
     OPTIMIZE_TEXTURES  = false, 
-    FPS_CAP            = 100, 
+    FPS_CAP            = 60, 
     ANTI_AFK           = true, 
 
     CRAFT_PRIORITIES = {
@@ -332,28 +335,7 @@ toggle3DRendering()
 applyFpsCap()
 applyAntiAfk()
 
-print("[RNG Script] Đang tải các tài nguyên game quan trọng (Waiting for Library)...")
-
-local Library = ReplicatedStorage:WaitForChild("Library", 45)
-if not Library then 
-    warn("[RNG Script] Không thể tải thư viện game chính (Library Timeout)!")
-    return 
-end
-
-local Client    = Library:WaitForChild("Client", 30)
-local Directory = Library:WaitForChild("Directory", 30)
-local Types     = Library:WaitForChild("Types", 30)
-local Modules   = Library:WaitForChild("Modules", 30)
-
-local Network        = Client and safeRequire(Client:WaitForChild("Network", 30))
-local RngEggsTypes   = Types     and safeRequire(Types:WaitForChild("RngEggs", 30))
-local RngEggsDir     = Directory and safeRequire(Directory:WaitForChild("RngEggs", 30))
-local RngBalancing   = Library   and safeRequire(Library:WaitForChild("Balancing", 30) and Library.Balancing:WaitForChild("Rng", 30))
-local RngEggCmds     = Client    and safeRequire(Client:WaitForChild("RngEggCmds", 30))
-local PetItem        = Library   and safeRequire(Library:WaitForChild("Items", 30):WaitForChild("PetItem", 30))
-local LuckyDiceCmds  = Client    and safeRequire(Client:WaitForChild("LuckyDiceCmds", 30))
-
-print("[RNG Script] Khởi tạo thành công! Toàn bộ tính năng farm đã hoạt động.")
+-- Thư viện và module sẽ được nạp ở cuối file trước khi chạy các luồng chính
 
 local _SaveModule = nil
 local function getSaveModule()
@@ -1238,7 +1220,49 @@ local function autoEquip()
     pcall(function() Network.Fire("LD_BestFit") end)
 end
 
+-- 1. Khởi chạy giao diện HUD ngay lập tức để người dùng có phản hồi trực quan trên màn hình
+task.spawn(startNavcUI)
+
+-- 2. Tiến hành tải các tài nguyên game quan trọng trong nền
 task.spawn(function()
+    print("[RNG Script] Đang tải các tài nguyên game quan trọng (Waiting for Library)...")
+    
+    Library = ReplicatedStorage:WaitForChild("Library", 45)
+    if not Library then 
+        warn("[RNG Script] Không thể tải thư viện game chính (Library Timeout)!")
+        return 
+    end
+
+    Client    = Library:WaitForChild("Client", 30)
+    Directory = Library:WaitForChild("Directory", 30)
+    Types     = Library:WaitForChild("Types", 30)
+    Modules   = Library:WaitForChild("Modules", 30)
+
+    Network        = Client and safeRequire(Client:WaitForChild("Network", 30))
+    RngEggsTypes   = Types     and safeRequire(Types:WaitForChild("RngEggs", 30))
+    RngEggsDir     = Directory and safeRequire(Directory:WaitForChild("RngEggs", 30))
+    RngBalancing   = Library   and safeRequire(Library:WaitForChild("Balancing", 30) and Library.Balancing:WaitForChild("Rng", 30))
+    RngEggCmds     = Client    and safeRequire(Client:WaitForChild("RngEggCmds", 30))
+    PetItem        = Library   and safeRequire(Library:WaitForChild("Items", 30):WaitForChild("PetItem", 30))
+    LuckyDiceCmds  = Client    and safeRequire(Client:WaitForChild("LuckyDiceCmds", 30))
+
+    print("[RNG Script] --- THÔNG TIN TẢI MODULE ---")
+    print("[RNG Script] Network:", tostring(Network))
+    print("[RNG Script] RngEggCmds:", tostring(RngEggCmds))
+    print("[RNG Script] PetItem:", tostring(PetItem))
+    print("[RNG Script] LuckyDiceCmds:", tostring(LuckyDiceCmds))
+    print("[RNG Script] RngEggsDir:", tostring(RngEggsDir))
+    print("[RNG Script] SaveModule:", tostring(getSaveModule()))
+    print("[RNG Script] -----------------------------")
+
+    if not Network then
+        warn("[RNG Script] Ngừng khởi chạy các luồng do lỗi thiếu Network!")
+        return
+    end
+
+    print("[RNG Script] Khởi tạo thành công! Bắt đầu chạy các luồng tự động farm.")
+
+    -- 3. Khởi chạy so le (Staggered Startup) các luồng tự động sau khi tải xong tài nguyên
     task.wait(1.5)
     task.spawn(rollLoop)
     
@@ -1497,4 +1521,4 @@ local function startNavcUI()
     end)
 end
 
-task.spawn(startNavcUI)
+-- Khởi tạo hoàn tất.

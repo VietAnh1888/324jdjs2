@@ -46,8 +46,8 @@ local CONFIG = {
     MAX_PER_TYPE       = 15,
     FARM_RADIUS        = 120,
     DISABLE_3D_RENDER  = false, 
-    OPTIMIZE_TEXTURES  = true, 
-    FPS_CAP            = 10, 
+    OPTIMIZE_TEXTURES  = false, 
+    FPS_CAP            = 100, 
     ANTI_AFK           = true, 
 
     CRAFT_PRIORITIES = {
